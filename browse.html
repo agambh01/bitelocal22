@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}{{ restaurant.name }} - BiteLocal{% endblock %}
+
+{% block content %}
+<section class="detail-section">
+
+    <!-- Main restaurant card -->
+    <div class="detail-card {{ restaurant.category }}">
+        <img src="{{ restaurant.img }}" alt="{{ restaurant.name }}" class="detail-img">
+        <div class="detail-info">
+            <span class="cat-badge">{{ restaurant.category|title }}</span>
+            <h2>{{ restaurant.name }}</h2>
+            <p class="detail-desc">{{ restaurant.description }}</p>
+            <p class="detail-loc">📍 {{ restaurant.location }}</p>
+            <p class="detail-price">💰 Price: {{ restaurant.price }}</p>
+
+            <!-- deal banner -->
+            <div class="deal-banner">
+                🏷️ <strong>Deal:</strong> {{ restaurant.deal }}
+                &nbsp;&nbsp;|&nbsp;&nbsp; Code: <strong>{{ restaurant.deal_code }}</strong>
+            </div>
+
+            <!-- average rating -->
+            <div class="detail-rating">
+                {% if avg_rating > 0 %}
+                    <span class="big-stars">{% for i in range(1,6) %}{{ '★' if i <= avg_rating|round|int else '☆' }}{% endfor %}</span>
+                    <span>{{ avg_rating }}/5 &nbsp;({{ restaurant_reviews|length }} review{{ 's' if restaurant_reviews|length != 1 }})</span>
+                {% else %}
+                    <span style="opacity:0.8;font-style:italic">No reviews yet — be the first!</span>
+                {% endif %}
+            </div>
+
+            <div class="detail-btns">
+                <!-- open website link -->
+                <a href="{{ restaurant.website }}" target="_blank" class="btn btn-white">🌐 Visit Website</a>
+
+                <!-- bookmark -->
+                <form method="POST" action="{{ url_for('bookmark', restaurant_id=restaurant.id) }}" style="display:inline">
+                    <button type="submit" class="btn btn-outline-white">
+                        {{ '⭐ Saved' if restaurant.id in bookmarks else '☆ Save' }}
+                    </button>
+                </form>
+
+                <a href="{{ url_for('browse') }}" class="btn btn-gray">← Back</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reviews Section -->
+    <div class="reviews-box">
+        <h3>⭐ Reviews
+            <span class="review-count-badge">{{ restaurant_reviews|length }}</span>
+        </h3>
+
+        {% if restaurant_reviews %}
+            <div class="reviews-list">
+            {% for rv in restaurant_reviews|reverse %}
+            <div class="review">
+                <div class="review-top">
+                    <div class="reviewer-avatar">{{ rv.author[0]|upper }}</div>
+                    <div>
+                        <strong>{{ rv.author }}</strong>
+                        <span class="review-date">{{ rv.date }}</span>
+                    </div>
+                    <span class="review-stars">
+                        {% for i in range(1,6) %}{{ '★' if i <= rv.rating else '☆' }}{% endfor %}
+                    </span>
+                </div>
+                {% if rv.comment %}
+                <p class="review-comment">{{ rv.comment }}</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+            </div>
+        {% else %}
+            <p class="no-reviews">No reviews yet. Be the first to share your experience!</p>
+        {% endif %}
+
+        <!-- Leave a review form -->
+        <div class="review-form">
+            <h4>✍️ Write a Review</h4>
+
+            <form method="POST" action="{{ url_for('submit_review', restaurant_id=restaurant.id) }}">
+                <!-- honeypot to catch bots — hidden from real users -->
+                <input type="text" name="website" style="display:none" tabindex="-1" autocomplete="off">
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Your Name <span class="req">*</span></label>
+                        <input type="text" name="author" placeholder="Your first name or nickname" required maxlength="100">
+                    </div>
+                    <div class="form-group">
+                        <label>Star Rating <span class="req">*</span></label>
+                        <div class="star-picker">
+                            {% for i in range(5, 0, -1) %}
+                            <input type="radio" name="rating" id="star{{ i }}" value="{{ i }}" required>
+                            <label for="star{{ i }}" title="{{ i }} stars">★</label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Your Review <span class="opt">(optional — max 400 characters)</span></label>
+                    <textarea name="comment" rows="4" maxlength="400"
+                              placeholder="What did you think? What should people order? Would you come back?"></textarea>
+                    <p class="char-hint">Max 400 characters</p>
+                </div>
+
+                <button type="submit" class="btn btn-red btn-full">Post My Review ⭐</button>
+            </form>
+        </div>
+    </div>
+
+</section>
+{% endblock %}

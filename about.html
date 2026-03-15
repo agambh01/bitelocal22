@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}All Deals - BiteLocal{% endblock %}
+
+{% block content %}
+<section class="browse-section">
+    <h2>🏷️ All Deals & Discounts</h2>
+    <p class="result-count">{{ restaurants|length }} deals available — click any to claim it at the restaurant!</p>
+
+    <div class="deals-grid">
+        {% for r in restaurants %}
+        <a href="{{ url_for('detail', restaurant_id=r.id) }}" class="deal-card {{ r.category }}">
+            <img src="{{ r.img }}" alt="{{ r.name }}">
+            <div class="deal-card-body">
+                <span class="deal-cat-badge">{{ r.category|title }}</span>
+                <h3>{{ r.name }}</h3>
+                <p class="deal-desc">{{ r.description }}</p>
+                <div class="deal-highlight">🏷️ {{ r.deal }}</div>
+                <div class="deal-code-display">
+                    Promo Code: <strong>{{ r.deal_code }}</strong>
+                </div>
+                <p class="deal-loc">📍 {{ r.location }} &nbsp;|&nbsp; {{ r.price }}</p>
+                <span class="deal-cta-btn">View Restaurant & Claim →</span>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,498 @@
+# BiteLocal - Local Restaurant Finder
+# FBLA Coding & Programming 2025-2026
+# Topic: Byte-Sized Business Boost
+# Made by: [Your Name], [Your School]
+#
+# Why Python? We learned Python in our CS class and it's easy to read.
+# Flask lets us build a real multi-page website with forms and sessions.
+# Jinja2 templates mean we don't copy the header/footer on every page.
+
+from flask import Flask, render_template, request, redirect, url_for, flash, session
+from datetime import datetime
+import re
+
+app = Flask(__name__)
+app.secret_key = "bitelocal2025"
+
+# ── All Restaurants ───────────────────────────────────────────────────────────
+# List of dicts. Each dict = one restaurant with all its info.
+
+RESTAURANTS = [
+    # ── American ──
+    {
+        "id": "burger-barn",
+        "name": "Burger Barn",
+        "category": "american",
+        "description": "Classic smash burgers and hand-cut fries made fresh daily. A Louisville staple since 2005.",
+        "location": "Downtown Louisville, KY",
+        "price": "$",
+        "deal": "Buy 1 burger get free fries on Tuesdays!",
+        "deal_code": "BURGER2FOR1",
+        "website": "https://www.yelp.com/search?find_desc=burgers&find_loc=Louisville%2C+KY",
+        "img": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&q=80",
+    },
+    {
+        "id": "liberty-grill",
+        "name": "Liberty Grill",
+        "category": "american",
+        "description": "BBQ ribs, pulled pork, and homemade mac and cheese slow cooked every day.",
+        "location": "Highlands, Louisville KY",
+        "price": "$$",
+        "deal": "10% off for students with school ID",
+        "deal_code": "STUDENT10",
+        "website": "https://www.yelp.com/search?find_desc=bbq&find_loc=Louisville%2C+KY",
+        "img": "https://images.unsplash.com/photo-1544025162-d76694265947?w=400&q=80",
+    },
+    {
+        "id": "mama-jeans",
+        "name": "Mama Jean's Diner",
+        "category": "american",
+        "description": "Old school diner with breakfast all day and homemade pies baked fresh every morning.",
+        "location": "St. Matthews, Louisville KY",
+        "price": "$",
+        "deal": "Free coffee refills every morning before 10am",
+        "deal_code": "MORNINGCOFFEE",
+        "website": "https://www.yelp.com/search?find_desc=diner&find_loc=Louisville%2C+KY",
+        "img": "https://images.unsplash.com/photo-1551218808-94e220e084d2?w=400&q=80",
+    },
+    {
+        "id": "smokehouse-lou",
+        "name": "Smokehouse Lou",
+        "category": "american",
+        "description": "Slow smoked brisket, ribs, and classic southern sides cooked low and slow.",
+        "location": "Portland, Louisville KY",
+        "price": "$$",
+        "deal": "Free side dish with any full rack order",
+        "deal_code": "SMOKESIDE",
+        "website": "https://www.yelp.com/search?find_desc=smokehouse&find_loc=Louisville%2C+KY",
+        "img": "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=400&q=80",
+    },
+    # ── Italian ──
+    {
+        "id": "nonna-pasta",
+        "name": "Nonna's Pasta House",
+        "category": "italian",
+        "description": "Homemade pasta, wood-fired pizza, and the best tiramisu in Louisville.",
+        "location": "NuLu, Louisville KY",
+        "price": "$$",
+        "deal": "Half price pasta on Monday nights",
+        "deal_code": "MONDAYPASTA",
+        "website": "https://www.yelp.com/search?find_desc=italian+pasta&find_loc=Louisville%2C+KY",
+        "img": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&q=80",
+    },
+    {
+        "id": "pizza-palace",
+        "name": "Pizza Palace",
+        "category": "italian",
+        "description": "New York style pizza by the slice or whole pie. 20+ toppings available.",
+        "location": "Bardstown Rd, Louisville KY",
+        "price": "$",
+        "deal": "Large pizza for $10 every Friday night",
+        "deal_code": "FRIDAYPIE",
+        "website": "https://www.yelp.com/search?find_desc=pizza&find_loc=Louisville%2C+KY",
+        "img": "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&q=80",
+    },
+    {
+        "id": "tuscan-table",
+        "name": "Tuscan Table",
+        "category": "italian",
+        "description": "Upscale Italian with risotto, seafood pasta, and a great wine list.",
+        "location": "East End, Louisville KY",
+        "price": "$$$",
+        "deal": "Free dessert on your birthday — just show your ID!",
+        "deal_code": "BDAYDESSERT",
+        "website": "https://www.yelp.com/search?find_desc=tuscan+italian&find_loc=Louisville%2C+KY",
+        "img": "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&q=80",
+    },
+    {
+        "id": "luigi-calzone",
+        "name": "Luigi's Calzone Corner",
+        "category": "italian",
+        "description": "Stuffed calzones, stromboli, and garlic knots baked fresh all day.",
+        "location": "Shively, Louisville KY",
+        "price": "$",
+        "deal": "Buy any calzone, get a free garlic knot basket",
+        "deal_code": "CALZONEKNOT",
+        "website": "https://www.yelp.com/search?find_desc=calzone&find_loc=Louisville%2C+KY",
+        "img": "https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=400&q=80",
+    },
+    # ── Asian ──
+    {
+        "id": "dragon-wok",
+        "name": "Dragon Wok",
+        "category": "asian",
+        "description": "Chinese takeout with lo mein, fried rice, and handmade dumplings.",
+        "location": "Crescent Hill, Louisville KY",
+        "price": "$",
+        "deal": "Free egg roll with any order over $15",
+        "deal_code": "EGGROLL15",
+        "website": "https://www.yelp.com/search?find_desc=chinese+food&find_loc=Louisville%2C+KY",
+        "img": "https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=400&q=80",
+    },
+    {
+        "id": "sakura-sushi",
+        "name": "Sakura Sushi",
+        "category": "asian",
+        "description": "Fresh sushi rolls, ramen bowls, and Japanese appetizers made to order.",
+        "location": "Middletown, Louisville KY",
+        "price": "$$",
+        "deal": "Happy hour sushi 4-6pm weekdays — 20% off everything",
+        "deal_code": "HAPPYHOUR20",
+        "website": "https://www.yelp.com/search?find_desc=sushi&find_loc=Louisville%2C+KY",
+        "img": "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=400&q=80",
+    },
+    {
+        "id": "pho-saigon",
+        "name": "Pho Saigon",
+        "category": "asian",
+        "description": "Authentic Vietnamese pho, banh mi sandwiches, and fresh spring rolls.",
+        "location": "South End, Louisville KY",
+        "price": "$",
+        "deal": "Free bubble tea with any large pho bowl",
+        "deal_code": "BUBBLETEA",
+        "website": "https://www.yelp.com/search?find_desc=vietnamese+pho&find_loc=Louisville%2C+KY",
+        "img": "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=400&q=80",
+    },
+    {
+        "id": "thai-orchid",
+        "name": "Thai Orchid",
+        "category": "asian",
+        "description": "Authentic Thai curries, pad thai, and mango sticky rice dessert.",
+        "location": "Cherokee Triangle, Louisville KY",
+        "price": "$$",
+        "deal": "Free spring rolls with orders over $20",
+        "deal_code": "THAISPRING",
+        "website": "https://www.yelp.com/search?find_desc=thai+food&find_loc=Louisville%2C+KY",
+        "img": "https://images.unsplash.com/photo-1562802378-063ec186a863?w=400&q=80",
+    },
+    # ── Mexican ──
+    {
+        "id": "taco-fiesta",
+        "name": "Taco Fiesta",
+        "category": "mexican",
+        "description": "Street tacos, burritos, and fresh guacamole made right in front of you.",
+        "location": "Germantown, Louisville KY",
+        "price": "$",
+        "deal": "Taco Tuesday — 3 tacos for $5 all day!",
+        "deal_code": "TACOTUESDAY",
+        "website": "https://www.yelp.com/search?find_desc=tacos&find_loc=Louisville%2C+KY",
+        "img": "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=400&q=80",
+    },
+    {
+        "id": "casa-grande",
+        "name": "Casa Grande",
+        "category": "mexican",
+        "description": "Sit-down Mexican restaurant with sizzling fajitas and fresh margaritas.",
+        "location": "Okolona, Louisville KY",
+        "price": "$$",
+        "deal": "Kids eat free every Sunday with adult entree",
+        "deal_code": "SUNDAYKIDS",
+        "website": "https://www.yelp.com/search?find_desc=mexican+restaurant&find_loc=Louisville%2C+KY",
+        "img": "https://images.unsplash.com/photo-1559847844-5315695dadae?w=400&q=80",
+    },
+    {
+        "id": "el-rancho",
+        "name": "El Rancho Grill",
+        "category": "mexican",
+        "description": "Tex-Mex with loaded nachos, enchiladas, and an all-you-can-eat salsa bar.",
+        "location": "Newburg, Louisville KY",
+        "price": "$",
+        "deal": "Free chips and salsa with every table — no purchase needed",
+        "deal_code": "FREECHIPS",
+        "website": "https://www.yelp.com/search?find_desc=tex+mex&find_loc=Louisville%2C+KY",
+        "img": "https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?w=400&q=80",
+    },
+    # ── Desserts ──
+    {
+        "id": "sweet-scoops",
+        "name": "Sweet Scoops Ice Cream",
+        "category": "desserts",
+        "description": "Local ice cream shop with 40+ flavors and homemade waffle cones.",
+        "location": "Clifton, Louisville KY",
+        "price": "$",
+        "deal": "Buy 2 scoops get 1 free every Wednesday",
+        "deal_code": "WEDNESDAY3",
+        "website": "https://www.yelp.com/search?find_desc=ice+cream&find_loc=Louisville%2C+KY",
+        "img": "https://images.unsplash.com/photo-1497034825429-c343d7c6a68f?w=400&q=80",
+    },
+    {
+        "id": "the-cake-shop",
+        "name": "The Cake Shop",
+        "category": "desserts",
+        "description": "Custom cakes, cupcakes, and pastries baked from scratch every single morning.",
+        "location": "Butchertown, Louisville KY",
+        "price": "$$",
+        "deal": "Free cupcake with any whole cake order",
+        "deal_code": "FREECUPCAKE",
+        "website": "https://www.yelp.com/search?find_desc=bakery+cakes&find_loc=Louisville%2C+KY",
+        "img": "https://images.unsplash.com/photo-1551024601-bec78aea704b?w=400&q=80",
+    },
+    {
+        "id": "donut-den",
+        "name": "The Donut Den",
+        "category": "desserts",
+        "description": "Louisville's most famous donut shop. Over 30 flavors made fresh overnight.",
+        "location": "Fern Creek, Louisville KY",
+        "price": "$",
+        "deal": "Buy a dozen get 2 free donuts",
+        "deal_code": "DOZEN2FREE",
+        "website": "https://donutden.com",
+        "img": "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=400&q=80",
+    },
+]
+
+# dictionary for O(1) lookups by id
+RESTAURANT_INDEX = {r["id"]: r for r in RESTAURANTS}
+
+# reviews stored as dict of lists — key is restaurant id
+reviews = {r["id"]: [] for r in RESTAURANTS}
+
+# community submissions list
+submissions = []
+
+
+# ── Helper Functions ──────────────────────────────────────────────────────────
+
+def get_avg_rating(restaurant_id):
+    """Calculate average star rating for a restaurant."""
+    rv = reviews[restaurant_id]
+    if len(rv) == 0:
+        return 0
+    return round(sum(r["rating"] for r in rv) / len(rv), 1)
+
+
+def add_ratings_to_list(restaurant_list):
+    """Add avg_rating and review_count fields to each restaurant dict."""
+    result = []
+    for r in restaurant_list:
+        copy = dict(r)
+        copy["avg_rating"] = get_avg_rating(r["id"])
+        copy["review_count"] = len(reviews[r["id"]])
+        result.append(copy)
+    return result
+
+
+def get_bookmarks():
+    """Return list of bookmarked IDs from session."""
+    return session.get("bookmarks", [])
+
+
+# ── Validation ────────────────────────────────────────────────────────────────
+
+def check_name(value):
+    value = value.strip()
+    if len(value) < 2:
+        return "Name must be at least 2 characters."
+    if len(value) > 100:
+        return "Name is too long (max 100 characters)."
+    if re.search(r"[<>\"'&]", value):
+        return "Name has invalid characters."
+    if value.isdigit():
+        return "Please enter a real name."
+    return None
+
+
+def check_email(value):
+    value = value.strip()
+    if not re.match(r"^[\w\.\+\-]+@[\w\-]+\.[a-zA-Z]{2,}$", value):
+        return "Please enter a valid email like name@example.com"
+    if value.lower() in ["test@test.com", "fake@fake.com", "a@a.com"]:
+        return "Please use a real email address."
+    return None
+
+
+def check_rating(value):
+    try:
+        n = int(value)
+        if n < 1 or n > 5:
+            return "Rating must be between 1 and 5."
+    except (ValueError, TypeError):
+        return "Please pick a star rating."
+    return None
+
+
+# ── Routes ────────────────────────────────────────────────────────────────────
+
+@app.route("/")
+def home():
+    # pass all restaurants to home for the deals slideshow
+    all_with_ratings = add_ratings_to_list(RESTAURANTS)
+    return render_template("home.html", restaurants=all_with_ratings)
+
+
+@app.route("/browse")
+def browse():
+    category = request.args.get("category", "all")
+    sort_by  = request.args.get("sort", "name")
+    search   = request.args.get("search", "").strip().lower()
+
+    # filter by category
+    pool = RESTAURANTS if category == "all" else [r for r in RESTAURANTS if r["category"] == category]
+
+    # intelligent search — checks name, description, and location
+    if search:
+        pool = [r for r in pool if
+                search in r["name"].lower() or
+                search in r["description"].lower() or
+                search in r["location"].lower()]
+
+    pool = add_ratings_to_list(pool)
+
+    # sort
+    if sort_by == "rating":
+        pool.sort(key=lambda x: x["avg_rating"], reverse=True)
+    elif sort_by == "price_low":
+        pool.sort(key=lambda x: len(x["price"]))
+    else:
+        pool.sort(key=lambda x: x["name"].lower())
+
+    return render_template("browse.html",
+                           restaurants=pool,
+                           category=category,
+                           sort_by=sort_by,
+                           search=search,
+                           bookmarks=get_bookmarks())
+
+
+@app.route("/restaurant/<restaurant_id>")
+def detail(restaurant_id):
+    restaurant = RESTAURANT_INDEX.get(restaurant_id)
+    if not restaurant:
+        flash("Restaurant not found!", "error")
+        return redirect(url_for("browse"))
+
+    return render_template("detail.html",
+                           restaurant=restaurant,
+                           restaurant_reviews=reviews.get(restaurant_id, []),
+                           avg_rating=get_avg_rating(restaurant_id),
+                           bookmarks=get_bookmarks())
+
+
+@app.route("/review/<restaurant_id>", methods=["POST"])
+def submit_review(restaurant_id):
+    # honeypot bot check
+    if request.form.get("website", ""):
+        flash("Bot detected!", "error")
+        return redirect(url_for("detail", restaurant_id=restaurant_id))
+
+    author  = request.form.get("author", "").strip()
+    rating  = request.form.get("rating", "").strip()
+    comment = request.form.get("comment", "").strip()
+
+    errors = [e for e in [check_name(author), check_rating(rating)] if e]
+    if len(comment) > 400:
+        errors.append("Comment is too long (max 400 characters).")
+
+    if errors:
+        for e in errors:
+            flash(e, "error")
+        return redirect(url_for("detail", restaurant_id=restaurant_id))
+
+    reviews[restaurant_id].append({
+        "author":  author,
+        "rating":  int(rating),
+        "comment": comment,
+        "date":    datetime.now().strftime("%b %d, %Y"),
+    })
+
+    flash("Your review was posted! Thanks! ⭐", "success")
+    return redirect(url_for("detail", restaurant_id=restaurant_id))
+
+
+@app.route("/bookmark/<restaurant_id>", methods=["POST"])
+def bookmark(restaurant_id):
+    if restaurant_id not in RESTAURANT_INDEX:
+        flash("Restaurant not found.", "error")
+        return redirect(url_for("browse"))
+
+    bmarks = get_bookmarks()
+    if restaurant_id in bmarks:
+        bmarks.remove(restaurant_id)
+        flash("Removed from saved.", "info")
+    else:
+        bmarks.append(restaurant_id)
+        flash("Saved to bookmarks! ⭐", "success")
+
+    session["bookmarks"] = bmarks
+    return redirect(request.referrer or url_for("browse"))
+
+
+@app.route("/bookmarks")
+def bookmarks_page():
+    ids   = get_bookmarks()
+    saved = add_ratings_to_list([RESTAURANT_INDEX[i] for i in ids if i in RESTAURANT_INDEX])
+    return render_template("bookmarks.html", restaurants=saved)
+
+
+@app.route("/deals")
+def deals():
+    # show all deals in one page
+    all_restaurants = add_ratings_to_list(RESTAURANTS)
+    return render_template("deals.html", restaurants=all_restaurants)
+
+
+@app.route("/submit", methods=["GET", "POST"])
+def submit():
+    if request.method == "POST":
+        if request.form.get("website", ""):
+            flash("Bot detected!", "error")
+            return redirect(url_for("submit"))
+
+        name        = request.form.get("name", "").strip()
+        email       = request.form.get("email", "").strip()
+        category    = request.form.get("category", "").strip()
+        location    = request.form.get("location", "").strip()
+        description = request.form.get("description", "").strip()
+
+        errors = [e for e in [check_name(name), check_email(email)] if e]
+        if not category:
+            errors.append("Please pick a food category.")
+        if len(location) < 3:
+            errors.append("Please enter a valid location.")
+        if description and len(description) > 500:
+            errors.append("Description is too long (max 500 characters).")
+
+        if errors:
+            for e in errors:
+                flash(e, "error")
+            return render_template("submit.html", form_data=request.form)
+
+        submissions.append({
+            "name": name, "email": email, "category": category,
+            "location": location, "description": description,
+            "date": datetime.now().strftime("%b %d, %Y"),
+        })
+
+        flash(f'Thanks! "{name}" was submitted for review! ✅', "success")
+        return redirect(url_for("submit"))
+
+    return render_template("submit.html", form_data={})
+
+
+@app.route("/about")
+def about():
+    return render_template("about.html")
+
+
+@app.route("/report")
+def report():
+    category_counts = {}
+    for r in RESTAURANTS:
+        cat = r["category"]
+        category_counts[cat] = category_counts.get(cat, 0) + 1
+
+    all_rated    = add_ratings_to_list(RESTAURANTS)
+    with_reviews = sorted([r for r in all_rated if r["review_count"] > 0],
+                          key=lambda x: x["avg_rating"], reverse=True)
+    total_reviews = sum(len(v) for v in reviews.values())
+
+    return render_template("report.html",
+                           category_counts=category_counts,
+                           top_restaurants=with_reviews[:5],
+                           total_reviews=total_reviews,
+                           submissions=submissions,
+                           total_restaurants=len(RESTAURANTS))
+
+
+if __name__ == "__main__":
+    app.run(debug=True, port=5000)
